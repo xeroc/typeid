@@ -101,7 +101,9 @@ def generate(*args: str, suffix: str = "Id", enable_sqla=False) -> Dict[str, Bas
             from .sqla import GUID
 
             sqla_name = f"{name}SQLA"
-            sqla_typeid_class = type(name, (GUID,), dict(typeid_class=typeid_class))
+            sqla_typeid_class = type(
+                name, (GUID,), dict(typeid_class=typeid_class, cache_ok=True)
+            )
             globals()[sqla_name] = sqla_typeid_class
             ret[sqla_name] = sqla_typeid_class
     return AttrDict(ret)
