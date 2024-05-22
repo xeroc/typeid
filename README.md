@@ -19,19 +19,53 @@ First generate the Types using generate(...), then use them like so:
 from uuid_extensions import uuid7
 from typeid import generate
 
-# Generate a bunch of new id types
-generate("sk", "pk", "user", "apikey")
+typeids = generate("user", enable_sqla=True)
 
 # Now they can be used with SkId, PkId, UserId, and ApikeyId
-assert str(SkId(uuid7().hex)).startswith("sk_")
-assert str(PkId(uuid7().hex)).startswith("pk_")
-assert str(UserId(uuid7().hex)).startswith("user_")
-assert str(ApikeyId(uuid7().hex)).startswith("apikey_")
+assert str(typeids.SkId(uuid7().hex)).startswith("sk_")
+assert str(typeids.PkId(uuid7().hex)).startswith("pk_")
+assert str(typeids.UserId(uuid7().hex)).startswith("user_")
+assert str(typeids.ApikeyId(uuid7().hex)).startswith("apikey_")
 
 # Obviously, loading a prefixed type id in the correct Type works just fine
-assert (UserId("user_nnv5rr3rfk3hgry6xrygr").hex == "0664c4135ed83faabd4bc0dc33839c9f")
+assert (typeids.UserId("user_nnv5rr3rfk3hgry6xrygr").hex == "0664c4135ed83faabd4bc0dc33839c9f")
 
 # Use custom suffixes, just in case you need them
 generate("admin", suffix="IdUseWithCare")
-assert str(AdminIdUseWithCare(uuid7().hex)).startswith("admin_")
+assert str(typeids.AdminIdUseWithCare(uuid7().hex)).startswith("admin_")
+```
+
+## SqlAlchemy Support
+
+The library also allows to create classes specifically for the use with
+sqlalchemy.
+
+#### Example
+
+```python
+from typeid import generate
+
+typeids = generate("user", enable_sqla=True)
+
+class User(Base):
+    __tablename__ = "user"
+
+    # use typeids.UserId in the Mapper[]
+    id: Mapped[typeids.UserId] = mapped_column(
+        # use typeids.UserIdSQLA in the mapped_column!
+        typeids.UserIdSQLA, primary_key=True, default=uuid.uuid4
+    )
+
+    name: str = Column(String(128), unique=True)
+
+user = User(name="John Doe")
+(db,) = get_session()
+db.add(user)
+db.commit()
+db.refresh(user)
+print(type(user.id))
+# <class 'typeid.UserId'>
+
+print((user.id))
+# user_qvnrsem3skqho2hgni2mfk
 ```

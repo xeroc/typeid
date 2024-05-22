@@ -28,6 +28,7 @@
 
 """
 
+from typing import Dict
 from base58 import b58encode, b58decode
 from uuid import UUID
 
@@ -42,14 +43,14 @@ class BaseId(UUID):
     #: This class variable will be filled in by type() later own
     _prefix: str = ""
 
-    def __init__(self, id: UUID | str | bytes):
+    def __init__(self, id: UUID | str | bytes) -> None:
         if isinstance(id, UUID):
             super().__init__(id.hex)
         elif isinstance(id, bytes):
             super().__init__(id.hex())
         elif isinstance(id, str):
             if id.startswith(self._prefix):
-                prefix_free_id = id[len(self._prefix) + 1:]
+                prefix_free_id = id[len(self._prefix) + 1 :]
                 uid: bytes = b58decode(prefix_free_id)
                 super().__init__(uid.hex())
             elif "_" in id:
@@ -74,13 +75,36 @@ class BaseId(UUID):
         return f"{prefix}_{id}"
 
 
-def generate(*args: str, suffix: str = "Id"):
+class AttrDict(dict):
+    """This class enables us to access the return values of generate() as
+    attributes."""
+
+    def __init__(self, *args, **kwargs):
+        super(AttrDict, self).__init__(*args, **kwargs)
+        self.__dict__ = self
+
+
+def generate(*args: str, suffix: str = "Id", enable_sqla=False) -> Dict[str, BaseId]:
     """Generate types based on a list of arguments. Each argument will result in
     a new type named after the argument (camel-cased) with the defined suffix at the end.
     """
+    ret = {}
     for _type in args:
         name = f"{_type.capitalize()}{suffix}"
-        globals()[name] = type(name, (BaseId,), dict(_prefix=_type))
+        typeid_class = type(name, (BaseId,), dict(_prefix=_type))
+        globals()[name] = typeid_class
+        ret[name] = typeid_class
+
+        # If the user wants sqla support, these additional classes will be
+        # generated
+        if enable_sqla:
+            from .sqla import GUID
+
+            sqla_name = f"{name}SQLA"
+            sqla_typeid_class = type(name, (GUID,), dict(typeid_class=typeid_class))
+            globals()[sqla_name] = sqla_typeid_class
+            ret[sqla_name] = sqla_typeid_class
+    return AttrDict(ret)
 
 
 if __name__ == "__main__":
