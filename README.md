@@ -19,7 +19,7 @@ First generate the Types using generate(...), then use them like so:
 from uuid_extensions import uuid7
 from typeid import generate
 
-typeids = generate("user", enable_sqla=True)
+typeids = generate("sk", "pk", "user", "apikey", enable_sqla=True)
 
 # Now they can be used with SkId, PkId, UserId, and ApikeyId
 assert str(typeids.SkId(uuid7().hex)).startswith("sk_")
@@ -31,8 +31,8 @@ assert str(typeids.ApikeyId(uuid7().hex)).startswith("apikey_")
 assert (typeids.UserId("user_nnv5rr3rfk3hgry6xrygr").hex == "0664c4135ed83faabd4bc0dc33839c9f")
 
 # Use custom suffixes, just in case you need them
-generate("admin", suffix="IdUseWithCare")
-assert str(typeids.AdminIdUseWithCare(uuid7().hex)).startswith("admin_")
+other_ids.generate("admin", suffix="IdUseWithCare")
+assert str(other_ids.AdminIdUseWithCare(uuid7().hex)).startswith("admin_")
 ```
 
 ## SqlAlchemy Support
