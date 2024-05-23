@@ -1,5 +1,7 @@
 # UUID-compatible Typed IDs with prefixes.
 
+[![Documentation](https://readthedocs.org/projects/typeid/badge/?version=latest)](https://typeid.readthedocs.io/en/latest/?badge=latest)
+
 `typid` is a python library that allows to create specific id types much like
 stripe uses them across their platform to distinguish different data models from
 their id already. `typeid` is compatible to the UUID library and as such can act
