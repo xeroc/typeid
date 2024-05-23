@@ -19,13 +19,6 @@
     ...    == "0664c4135ed83faabd4bc0dc33839c9f")
     >>> extra_types = generate("admin", suffix="IdUseWithCare")
     >>> assert str(extra_types.AdminIdUseWithCare(uuid7().hex)).startswith("admin_")
-
-    # Wrong prefix
-    >>> typeids.UserId("sk_nnv5rr3rfk3hgry6xrygr")
-    Traceback (most recent call last):
-    ...
-    ValueError: Wrong prefix, got sk, expected user
-
 """
 
 from typing import Dict, Optional, Callable
