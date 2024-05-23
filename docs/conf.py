@@ -18,9 +18,7 @@ release = "v0.2.0"
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
-extensions = ["sphinx.ext.autosummary", "sphinx_autopackagesummary"]
-
-autosummary_generate = True
+extensions = []
 
 templates_path = ["_templates"]
 exclude_patterns = []
