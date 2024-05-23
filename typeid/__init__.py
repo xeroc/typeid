@@ -10,25 +10,25 @@
 
     >>> from uuid_extensions import uuid7
     >>> from typeid import generate
-    >>> generate("sk", "pk", "user", "apikey")
-    >>> assert str(SkId(uuid7().hex)).startswith("sk_")
-    >>> assert str(PkId(uuid7().hex)).startswith("pk_")
-    >>> assert str(UserId(uuid7().hex)).startswith("user_")
-    >>> assert str(ApikeyId(uuid7().hex)).startswith("apikey_")
-    >>> assert (UserId("user_nnv5rr3rfk3hgry6xrygr").hex 
+    >>> typeids = generate("sk", "pk", "user", "apikey")
+    >>> assert str(typeids.SkId(uuid7().hex)).startswith("sk_")
+    >>> assert str(typeids.PkId(uuid7().hex)).startswith("pk_")
+    >>> assert str(typeids.UserId(uuid7().hex)).startswith("user_")
+    >>> assert str(typeids.ApikeyId(uuid7().hex)).startswith("apikey_")
+    >>> assert (typeids.UserId("user_nnv5rr3rfk3hgry6xrygr").hex
     ...    == "0664c4135ed83faabd4bc0dc33839c9f")
-    >>> generate("admin", suffix="IdUseWithCare")
-    >>> assert str(AdminIdUseWithCare(uuid7().hex)).startswith("admin_")
+    >>> extra_types = generate("admin", suffix="IdUseWithCare")
+    >>> assert str(extra_types.AdminIdUseWithCare(uuid7().hex)).startswith("admin_")
 
     # Wrong prefix
-    >>> UserId("sk_nnv5rr3rfk3hgry6xrygr")
+    >>> typeids.UserId("sk_nnv5rr3rfk3hgry6xrygr")
     Traceback (most recent call last):
     ...
     ValueError: Wrong prefix, got sk, expected user
 
 """
 
-from typing import Dict
+from typing import Dict, Optional, Callable
 from base58 import b58encode, b58decode
 from uuid import UUID
 
@@ -42,8 +42,13 @@ class BaseId(UUID):
 
     #: This class variable will be filled in by type() later own
     _prefix: str = ""
+    _generator: Optional[Callable] = None
 
-    def __init__(self, id: UUID | str | bytes) -> None:
+    def __init__(self, id: Optional[UUID | str | bytes] = None) -> None:
+        if id is None and callable(self._generator):
+            generator = getattr(self, "_generator")
+            id = generator()
+
         if isinstance(id, UUID):
             super().__init__(id.hex)
         elif isinstance(id, bytes):
@@ -84,14 +89,40 @@ class AttrDict(dict):
         self.__dict__ = self
 
 
-def generate(*args: str, suffix: str = "Id", enable_sqla=False) -> Dict[str, BaseId]:
+def generate(
+    *args: str,
+    suffix: str = "Id",
+    enable_sqla: bool = False,
+    generator: Callable = None,
+) -> Dict[str, BaseId]:
     """Generate types based on a list of arguments. Each argument will result in
     a new type named after the argument (camel-cased) with the defined suffix at the end.
+
+    :param *args: list of strings for which to generate typed Id classes
+    :param suffix: (Id) suffix used in the classes
+    :param enable_sqla: (False) If true, also generates classes (suffix "SQLA" to be used for sqlalchemy)
+    :param generator: (None) Allows to provide a generator for new instances
+    :return: AttributeClass that allows to access new classes through attributes
+
+    Usage
+    =====
+
+    >>> from uuid_extensions import uuid7
+    >>> from typeid import generate
+    >>> typed_ids = generate(
+    ...     "user",
+    ...     "apikey",
+    ...     generator=lambda: uuid7().hex
+    ... )
+    >>> user_id = str(typed_ids.UserId())
+    >>> # user_id = user_nnv5rr3rfk3hgry6xrygr
     """
     ret = {}
     for _type in args:
         name = f"{_type.capitalize()}{suffix}"
-        typeid_class = type(name, (BaseId,), dict(_prefix=_type))
+        typeid_class = type(
+            name, (BaseId,), dict(_prefix=_type, _generator=staticmethod(generator))
+        )
         globals()[name] = typeid_class
         ret[name] = typeid_class
 
@@ -111,8 +142,9 @@ def generate(*args: str, suffix: str = "Id", enable_sqla=False) -> Dict[str, Bas
 
 if __name__ == "__main__":
     import doctest
+    from uuid_extensions import uuid7
 
     generate("sk", "pk", "user", "apikey")
-    generate("admin", suffix="IdUseWithCare")
+    generate("admin", suffix="IdUseWithCare", generator=lambda: uuid7().hex)
 
     doctest.testmod()
