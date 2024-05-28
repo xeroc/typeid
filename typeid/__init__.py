@@ -21,7 +21,7 @@
     >>> assert str(extra_types.AdminIdUseWithCare(uuid7().hex)).startswith("admin_")
 """
 
-from typing import Dict, Optional, Callable
+from typing import Optional, Callable
 from base58 import b58encode, b58decode
 from uuid import UUID
 
@@ -36,6 +36,8 @@ class BaseId(UUID):
     #: This class variable will be filled in by type() later own
     _prefix: str = ""
     _generator: Optional[Callable] = None
+    _encode = staticmethod(b58encode)
+    _decode = staticmethod(b58decode)
 
     def __init__(self, id: Optional[UUID | str | bytes] = None) -> None:
         if id is None and callable(self._generator):
@@ -43,20 +45,33 @@ class BaseId(UUID):
             id = generator()
 
         if isinstance(id, UUID):
+            # Load from a UUID using the hex representation
             super().__init__(id.hex)
-        elif isinstance(id, bytes):
+
+        elif isinstance(id, bytes) and len(id) == 16:
+            # forward the hex content of a bytes array
             super().__init__(id.hex())
+
         elif isinstance(id, str):
-            if id.startswith(self._prefix):
+            # Load from string
+            # NOTE: we need to make a distinction if it starts with our prefix
+            # or not
+
+            if id.startswith(f"{self._prefix}_"):
+                # uses our prefix
                 prefix_free_id = id[len(self._prefix) + 1 :]
-                uid: bytes = b58decode(prefix_free_id)
+                uid: bytes = self._decode(prefix_free_id.encode("ascii"))
                 super().__init__(uid.hex())
+
             elif "_" in id:
+                # does not use our prefix but has a _ in the string!
                 found_prefix = id[: id.index("_")]
                 raise ValueError(
                     f"Wrong prefix, got {found_prefix}, expected {self._prefix}"
                 )
+
             else:
+                # most probably a hex string
                 super().__init__(id)
         else:
             raise NotImplementedError(
@@ -69,7 +84,7 @@ class BaseId(UUID):
         :return: encoded and prefixed id as string
         """
         prefix = str(self._prefix)
-        id = b58encode(self.bytes).decode("ascii").lower()
+        id = self._encode(self.bytes).decode("ascii")
         return f"{prefix}_{id}"
 
 
@@ -87,7 +102,7 @@ def generate(
     suffix: str = "Id",
     enable_sqla: bool = False,
     generator: Callable = None,
-) -> Dict[str, BaseId]:
+) -> AttrDict:
     """Generate types based on a list of arguments. Each argument will result in
     a new type named after the argument (camel-cased) with the defined suffix at the end.
 
@@ -109,6 +124,7 @@ def generate(
     ... )
     >>> user_id = str(typed_ids.UserId())
     >>> # user_id = user_nnv5rr3rfk3hgry6xrygr
+    >>> u_id_typed = typed_ids.userId("user_nnv5rr3rfk3hgry6xrygr")
     """
     ret = {}
     for _type in args:
