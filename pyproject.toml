@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "typeid"
-version = "0.3.0"
+version = "0.3.2"
 description = "UUID-compatible Typed IDs with prefixes"
 authors = ["Fabian Schuh <info@chainsquad.com>"]
 license = "MIT"
