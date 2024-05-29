@@ -37,7 +37,8 @@ class GUID(TypeDecorator):
         if value is None:
             return value
         elif dialect.name == "postgresql":
-            return str(value)
+            # Force regular UUID representation on postgres
+            return str(uuid.UUID(value.hex))
         else:
             if not isinstance(value, self.typeid_class):
                 return self.typeid_class(value).hex
