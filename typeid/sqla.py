@@ -50,3 +50,7 @@ class GUID(TypeDecorator):
             return value
         else:
             return self.typeid_class(value)
+
+    def __repr__(self):
+        """We need this so alembic can use the correct type for upgrades"""
+        return self.impl.__repr__()
