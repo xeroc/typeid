@@ -40,42 +40,35 @@ class BaseId(UUID):
     _decode = staticmethod(b58decode)
 
     def __init__(self, id: Optional[UUID | str | bytes] = None) -> None:
-        if id is None and callable(self._generator):
-            generator = getattr(self, "_generator")
-            id = generator()
+        if id is None:
+            if callable(self._generator):
+                id = self._generator()
+            else:
+                # Fall back to UUID's default (uuid4).
+                super().__init__()
+                return
 
         if isinstance(id, UUID):
-            # Load from a UUID using the hex representation
-            super().__init__(id.hex)
-
+            super().__init__(hex=id.hex)
         elif isinstance(id, bytes) and len(id) == 16:
-            # forward the hex content of a bytes array
-            super().__init__(id.hex())
-
+            super().__init__(bytes=id)
         elif isinstance(id, str):
-            # Load from string
-            # NOTE: we need to make a distinction if it starts with our prefix
-            # or not
-
             if id.startswith(f"{self._prefix}_"):
-                # uses our prefix
                 prefix_free_id = id[len(self._prefix) + 1 :]
-                uid: bytes = self._decode(prefix_free_id.encode("ascii"))
-                super().__init__(uid.hex())
-
+                uid_bytes: bytes = self._decode(prefix_free_id.encode("ascii"))
+                super().__init__(bytes=uid_bytes)
             elif "_" in id:
-                # does not use our prefix but has a _ in the string!
                 found_prefix = id[: id.index("_")]
                 raise ValueError(
                     f"Wrong prefix, got {found_prefix}, expected {self._prefix}"
                 )
-
             else:
-                # most probably a hex string
-                super().__init__(id)
+                # Assume it's a standard hex string representation of a UUID.
+                super().__init__(hex=id)
         else:
-            raise NotImplementedError(
-                "Incorrect argument type. Requries, UUID, hex, bytes or string."
+            raise TypeError(
+                f"Unsupported type for id: {type(id)}. "
+                "Requires UUID, str, bytes, or None."
             )
 
     def __str__(self) -> str:
