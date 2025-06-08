@@ -25,8 +25,51 @@ from typing import Optional, Callable
 from base58 import b58encode, b58decode
 from uuid import UUID
 
+try:
+    from sqlalchemy.dialects.postgresql import UUID as PG_UUID
+    from sqlalchemy.types import CHAR, TypeDecorator
 
-class BaseId(UUID):
+    class SQLAMixin(TypeDecorator):
+        """Mixin class to add SQLAlchemy support to BaseId."""
+
+        impl = CHAR(32)
+        cache_ok = True
+
+        def load_dialect_impl(self, dialect):
+            if dialect.name == "postgresql":
+                return dialect.type_descriptor(PG_UUID())
+            return dialect.type_descriptor(self.impl)
+
+        def process_bind_param(self, value, dialect):
+            if value is None:
+                return value
+
+            if not isinstance(value, UUID):
+                value = self.__class__(value)
+
+            if dialect.name == "postgresql":
+                return str(UUID(value.hex))
+            return value.hex
+
+        def process_result_value(self, value, dialect):
+            if value is None:
+                return value
+            return self.__class__(value)
+
+        @property
+        def python_type(self):
+            return self.__class__
+
+        def __repr__(self):
+            """We need this so alembic can use the correct type for upgrades"""
+            return f"{self.__class__.__name__}()"
+
+    BASE = (UUID, SQLAMixin)
+except ImportError:
+    BASE = (UUID,)
+
+
+class BaseId(*BASE):
     """BaseID implementation that does the lifting of a UUID into a typed UUID
     and formats it more nicely.
 
@@ -93,7 +136,6 @@ class AttrDict(dict):
 def generate(
     *args: str,
     suffix: str = "Id",
-    enable_sqla: bool = False,
     generator: Callable = None,
 ) -> AttrDict:
     """Generate types based on a list of arguments. Each argument will result in
@@ -101,7 +143,6 @@ def generate(
 
     :param *args: list of strings for which to generate typed Id classes
     :param suffix: (Id) suffix used in the classes
-    :param enable_sqla: (False) If true, also generates classes (suffix "SQLA" to be used for sqlalchemy)
     :param generator: (None) Allows to provide a generator for new instances
     :return: AttributeClass that allows to access new classes through attributes
 
@@ -127,18 +168,6 @@ def generate(
         )
         globals()[name] = typeid_class
         ret[name] = typeid_class
-
-        # If the user wants sqla support, these additional classes will be
-        # generated
-        if enable_sqla:
-            from .sqla import GUID
-
-            sqla_name = f"{name}SQLA"
-            sqla_typeid_class = type(
-                name, (GUID,), dict(typeid_class=typeid_class, cache_ok=True)
-            )
-            globals()[sqla_name] = sqla_typeid_class
-            ret[sqla_name] = sqla_typeid_class
     return AttrDict(ret)
 
 
