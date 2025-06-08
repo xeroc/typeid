@@ -1,4 +1,4 @@
-# UUID-compatible Typed IDs with prefixes.
+# UUID-compatible Typed IDs with prefixes
 
 [![Documentation](https://readthedocs.org/projects/typeid/badge/?version=latest)](https://typeid.readthedocs.io/en/latest/?badge=latest)
 
@@ -21,7 +21,7 @@ First generate the Types using generate(...), then use them like so:
 from uuid_extensions import uuid7
 from typeid import generate
 
-typeids = generate("sk", "pk", "user", "apikey", enable_sqla=True)
+typeids = generate("sk", "pk", "user", "apikey")
 
 # Now they can be used with SkId, PkId, UserId, and ApikeyId
 assert str(typeids.SkId(uuid7().hex)).startswith("sk_")
@@ -47,15 +47,15 @@ sqlalchemy.
 ```python
 from typeid import generate
 
-typeids = generate("user", enable_sqla=True)
+typeids = generate("user")
 
 class User(Base):
     __tablename__ = "user"
 
     # use typeids.UserId in the Mapper[]
     id: Mapped[typeids.UserId] = mapped_column(
-        # use typeids.UserIdSQLA in the mapped_column!
-        typeids.UserIdSQLA, primary_key=True, default=uuid.uuid4
+        # use typeids.UserId in the mapped_column!
+        typeids.UserId, primary_key=True, default=uuid.uuid4
     )
 
     name: str = Column(String(128), unique=True)
